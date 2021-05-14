@@ -19,8 +19,8 @@ decodeVarUInt = loop 0 0
           byte <- P.satisfy $ const True
           let x' = x .|. ((fromIntegral byte .&. 0x7F) `unsafeShiftL` (7 * i))
           if (byte .&. 0x80) > 0
-            then return x'
-            else loop (i + 1) x'
+            then loop (i + 1) x'
+            else return x'
 
 decodeBinaryStr :: P.Parser V.Bytes
 decodeBinaryStr = do

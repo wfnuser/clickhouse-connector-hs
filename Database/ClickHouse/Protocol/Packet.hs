@@ -3,10 +3,10 @@
 module Database.ClickHouse.Protocol.Packet where
 
 import qualified Database.ClickHouse.Protocol.ClientProtocol as CP
-import qualified Database.ClickHouse.Protocol.ServerProtocol as SP
 import Database.ClickHouse.Protocol.Const
-import Database.ClickHouse.Protocol.Encoder
 import Database.ClickHouse.Protocol.Decoder
+import Database.ClickHouse.Protocol.Encoder
+import qualified Database.ClickHouse.Protocol.ServerProtocol as SP
 import Z.Data.ASCII
 import qualified Z.Data.Builder as B
 import qualified Z.Data.Parser as P
@@ -27,20 +27,44 @@ helloBuilder (Hello db username password) = do
 
 data ServerInfo = ServerInfo
   { name :: {-# UNPACK #-} !V.Bytes,
-    version_major :: {-# UNPACK #-} !Word,
-    version_minor :: {-# UNPACK #-} !Word,
-    version_patch :: {-# UNPACK #-} !Word,
+    versionMajor :: {-# UNPACK #-} !Word,
+    versionMinor :: {-# UNPACK #-} !Word,
+    versionPatch :: {-# UNPACK #-} !Word,
     revision :: !Word,
     timezone :: Maybe V.Bytes,
-    display_name :: {-# UNPACK #-} !V.Bytes
+    displayName :: {-# UNPACK #-} !V.Bytes
   }
   deriving (Show)
 
--- serverInfoParser :: V.Bytes -> P.Parser ServerInfo
--- serverInfoParser bytes = do
---   packet_type <- decodeVarUInt
---   case packet_type of 
---     SP._HELLO ->
-
---     otherwise ->
-  
+serverInfoParser :: P.Parser ServerInfo
+serverInfoParser = do
+  packetType <- decodeVarUInt
+  if packetType == SP._HELLO
+    then do
+      serverName <- decodeBinaryStr
+      serverVersionMajor <- decodeVarUInt
+      serverVersionMinor <- decodeVarUInt
+      revision <- decodeVarUInt
+      timezone <-
+        if revision >= _DBMS_MIN_REVISION_WITH_SERVER_TIMEZONE
+          then do Just <$> decodeBinaryStr
+          else return Nothing
+      displayName <-
+        if revision >= _DBMS_MIN_REVISION_WITH_SERVER_DISPLAY_NAME
+          then decodeBinaryStr
+          else return ""
+      versionPatch <-
+        if revision >= _DBMS_MIN_REVISION_WITH_VERSION_PATCH
+          then decodeVarUInt
+          else return revision
+      return $
+        ServerInfo
+          { name = serverName,
+            versionMajor = serverVersionMajor,
+            versionMinor = serverVersionMinor,
+            versionPatch = versionPatch,
+            revision = revision,
+            timezone = timezone,
+            displayName = displayName
+          }
+    else P.fail' "parse failed"
