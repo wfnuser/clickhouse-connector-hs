@@ -9,6 +9,7 @@ import Database.ClickHouse.Protocol.Packet
 import Z.Data.ASCII
 import qualified Z.Data.Builder as B
 import qualified Z.Data.Parser as P
+import qualified Z.Data.Text as T
 import qualified Z.Data.Vector as V
 import Z.IO
 import Z.IO.Network
@@ -47,5 +48,12 @@ connect (ConnectInfo host port database username password) = do
         -- should not use undefined to throw error
         undefined
       Right info -> do
-        print $ name info
+        print . T.validate $ name info
+        print . show $ versionMajor info
+        print . show $ versionMinor info
+        print . show $ versionPatch info
+        print . show $ revision info
+        case timezone info of
+          Just timezone -> print . T.validate $ timezone
+        print . T.validate $ displayName info
         return $ CHConn (readBuffer i) (writeBuffer o) consumed
