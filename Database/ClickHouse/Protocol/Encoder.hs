@@ -18,6 +18,9 @@ encodeVarUInt x = do
   let x' = x `unsafeShiftR` 7
   when (x' /= 0) (encodeVarUInt x')
 
+encodeBool :: Bool -> B.Builder ()
+encodeBool is_overflows = if is_overflows then encodeVarUInt 1 else encodeVarUInt 0
+
 encodeVarInt32 :: Int32 -> B.Builder ()
 encodeVarInt32 = loop 4
   where

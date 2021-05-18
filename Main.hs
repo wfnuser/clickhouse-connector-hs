@@ -3,7 +3,8 @@
 module Main where
 
 import Database.ClickHouse.Connection
-import Database.ClickHouse.Protocol.Block
+import Database.ClickHouse.Protocol.Connect
+import Database.ClickHouse.Protocol.Insert
 import Database.ClickHouse.Protocol.Query
 
 main :: IO ()
@@ -16,4 +17,4 @@ main = do
       -- sendQuery "insert into big (*) VALUES ('b')"
       -- sendQuery "drop table if exists big"
       -- sendQuery "CREATE TABLE big (x String) ENGINE = Memory AS SELECT 1"
-      writeBlockStart "big" "INSERT INTO big (x) VALUES "
+      prepareInsert "big" "INSERT INTO big (x) VALUES "

@@ -2,13 +2,12 @@
 
 module Database.ClickHouse.Protocol.Block where
 
-import Database.ClickHouse.Connection
+import Data.Int
 import qualified Database.ClickHouse.Protocol.ClientProtocol as CP
 import Database.ClickHouse.Protocol.Const
 import Database.ClickHouse.Protocol.Decoder
 import Database.ClickHouse.Protocol.Encoder
 import Database.ClickHouse.Protocol.Packet
-import Database.ClickHouse.Protocol.Query
 import qualified Database.ClickHouse.Protocol.QueryProcessingStage as Stage
 import qualified Database.ClickHouse.Protocol.ServerProtocol as SP
 import Z.Data.ASCII
@@ -17,43 +16,54 @@ import qualified Z.Data.Parser as P
 import qualified Z.Data.Text as T
 import qualified Z.Data.Vector as V
 
-blockBuilder :: V.Bytes -> V.Bytes -> ServerInfo -> B.Builder ()
-blockBuilder tablename q info = do
-  queryBuilder q
-  writeBlock tablename info
+data BlockInfo = Info
+  { is_overflows :: !Bool,
+    bucket_num :: {-# UNPACK #-} !Int32
+  }
+  deriving (Show)
 
-writeBlock :: V.Bytes -> ServerInfo -> B.Builder ()
-writeBlock tableName info = do
+defaultBlockInfo :: BlockInfo
+defaultBlockInfo = Info False 0
+
+data CKType
+  = CKInt16 Int16
+  | CKString V.Bytes
+  deriving (Show)
+
+data Block = ColumnOrientedBlock
+  { columns_with_type :: V.Vector (V.Bytes, V.Bytes),
+    blockdata :: V.Vector (V.Vector CKType),
+    info :: BlockInfo
+  }
+  deriving (Show)
+
+emptyBlockBuilder :: V.Bytes -> B.Builder ()
+emptyBlockBuilder tableName = do
+  blockBuilder tableName Nothing
+
+blockBuilder :: V.Bytes -> Maybe Block -> B.Builder ()
+blockBuilder tableName block = do
   encodeVarUInt CP._DATA
   encodeBinaryStr tableName
+  blockInfoBuilder defaultBlockInfo
 
-  blockServerInfoBuilder info
+  case block of
+    Nothing -> do
+      -- write empty columns and rows
+      encodeVarUInt 0 -- #col
+      encodeVarUInt 0 -- #row
+    Just (ColumnOrientedBlock columns_with_type blockdata info) -> do
+      encodeVarUInt . fromIntegral . V.length $ blockdata
+      encodeVarUInt . fromIntegral . V.length $ V.index blockdata 0
 
-blockServerInfoBuilder :: ServerInfo -> B.Builder ()
-blockServerInfoBuilder info = do
+
+blockInfoBuilder :: BlockInfo -> B.Builder ()
+blockInfoBuilder (Info is_overflows bucket_num) = do
   encodeVarUInt 1
-  encodeVarUInt 0 -- not over flows
+  encodeBool is_overflows -- not overflows
   encodeVarUInt 2
 
-  -- support bucket num later
-  encodeVarInt32 (-1)
+  if bucket_num == 0
+    then encodeVarInt32 (-1)
+    else encodeVarInt32 bucket_num
   encodeVarUInt 0
-
-  -- write empty columns and rows
-  encodeVarUInt 0 -- #col
-  encodeVarUInt 0 -- #row
-
-writeBlockStart :: V.Bytes -> V.Bytes -> ServerInfo -> CHConn -> IO CHConn
-writeBlockStart tablename q info c = do
-  let bytes = B.build $ blockBuilder tablename q info
-  print bytes
-  chWrite c bytes
-  buf <- chRead c
-  print buf
-  return c
-
--- sendQuery :: V.Bytes -> CHConn -> IO CHConn
--- sendQuery q c = do
---   let bytes = B.build $ queryBuilder q
---   chWrite c bytes
---   return c
