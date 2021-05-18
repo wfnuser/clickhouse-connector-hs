@@ -32,6 +32,13 @@ prepareInsert tablename q info c = do
   print buf
   return c
 
+sendEmptyBlock :: CHConn -> IO CHConn
+sendEmptyBlock c = do
+  let bytes = B.build $ emptyBlockBuilder ""
+  print bytes
+  chWrite c bytes
+  return c
+
 sendData :: V.Bytes -> Block -> CHConn -> IO CHConn
 sendData tablename block c = do
   let bytes = B.build $ blockBuilder tablename $ Just block

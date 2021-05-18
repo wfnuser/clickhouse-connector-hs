@@ -5,14 +5,16 @@ module Database.ClickHouse.Protocol.Connect where
 import Data.IORef
 import Database.ClickHouse.Connection
 import Database.ClickHouse.DNS
+import Database.ClickHouse.Protocol.Block
+import Database.ClickHouse.Protocol.Column
 import Database.ClickHouse.Protocol.Insert
 import Database.ClickHouse.Protocol.Packet
 import qualified Z.Data.Builder as B
 import qualified Z.Data.Parser as P
 import qualified Z.Data.Text as T
+import qualified Z.Data.Vector as V
 import Z.IO
 import Z.IO.Network
-import Database.ClickHouse.Protocol.Block
 
 connect :: ConnectInfo -> (ServerInfo -> CHConn -> IO CHConn) -> IO CHConn
 connect (ConnectInfo host port database username password) func = do
@@ -40,9 +42,16 @@ connect (ConnectInfo host port database username password) func = do
         print . T.validate $ displayName info
         let conn = CHConn (readBuffer i) (writeBuffer' o) consumed
         -- func info conn
-        prepareInsert "big" "INSERT INTO big (x) VALUES " info conn
-        -- let b = ColumnOrientedBlock {
-        --     columns_with_type = V.Vector 
-        -- }
-        -- sendData "big" b conn
+        prepareInsert "test" "INSERT INTO test (x, y) VALUES " info conn
+
+        let columns_with_type = [("x", "String"), ("y", "Int16")]
+        let b =
+              ColumnOrientedBlock
+                { columns_with_type = V.pack columns_with_type,
+                  blockdata = V.pack [V.pack [CKString "asdf", CKString "asdf"], V.pack [CKInt16 123, CKInt16 123]]
+                }
+        sendData "test" b conn
+        sendEmptyBlock conn
+        res <- readBuffer i
+        print . T.validate $ res
         return conn

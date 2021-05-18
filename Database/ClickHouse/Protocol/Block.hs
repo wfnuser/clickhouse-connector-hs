@@ -4,6 +4,7 @@ module Database.ClickHouse.Protocol.Block where
 
 import Data.Int
 import qualified Database.ClickHouse.Protocol.ClientProtocol as CP
+import Database.ClickHouse.Protocol.Column
 import Database.ClickHouse.Protocol.Const
 import Database.ClickHouse.Protocol.Decoder
 import Database.ClickHouse.Protocol.Encoder
@@ -25,15 +26,9 @@ data BlockInfo = Info
 defaultBlockInfo :: BlockInfo
 defaultBlockInfo = Info False 0
 
-data CKType
-  = CKInt16 Int16
-  | CKString V.Bytes
-  deriving (Show)
-
 data Block = ColumnOrientedBlock
   { columns_with_type :: V.Vector (V.Bytes, V.Bytes),
-    blockdata :: V.Vector (V.Vector CKType),
-    info :: BlockInfo
+    blockdata :: V.Vector (V.Vector CKType)
   }
   deriving (Show)
 
@@ -52,10 +47,21 @@ blockBuilder tableName block = do
       -- write empty columns and rows
       encodeVarUInt 0 -- #col
       encodeVarUInt 0 -- #row
-    Just (ColumnOrientedBlock columns_with_type blockdata info) -> do
+    Just (ColumnOrientedBlock cwt blockdata) -> do
       encodeVarUInt . fromIntegral . V.length $ blockdata
       encodeVarUInt . fromIntegral . V.length $ V.index blockdata 0
-
+      loop 0 (ColumnOrientedBlock cwt blockdata)
+  where
+    loop i (ColumnOrientedBlock cwt bd) = do
+      if i == V.length cwt
+        then return ()
+        else do
+          let (cn, ct) = V.index cwt i
+          let rows = V.index bd i
+          encodeBinaryStr cn
+          encodeBinaryStr ct
+          encodeCK rows
+          loop (i + 1) (ColumnOrientedBlock cwt bd)
 
 blockInfoBuilder :: BlockInfo -> B.Builder ()
 blockInfoBuilder (Info is_overflows bucket_num) = do

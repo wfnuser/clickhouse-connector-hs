@@ -19,10 +19,30 @@ encodeVarUInt x = do
   when (x' /= 0) (encodeVarUInt x')
 
 encodeBool :: Bool -> B.Builder ()
-encodeBool is_overflows = if is_overflows then encodeVarUInt 1 else encodeVarUInt 0
+encodeBool is_overflows = if is_overflows then encodeVarUInt 1 else encodeVarUInt 0 
+
+-- encodeLoop :: Bits a => Int -> a -> B.Builder ()
+-- encodeLoop n acc = 
+--       if n == 0
+--         then return ()
+--         else do
+--           B.word8 (fromIntegral (acc .&. 0xFF))
+--           let acc' = acc `unsafeShiftR` 8
+--           encodeLoop (n -1) acc'
 
 encodeVarInt32 :: Int32 -> B.Builder ()
 encodeVarInt32 = loop 4
+  where
+    loop n acc =
+      if n == 0
+        then return ()
+        else do
+          B.word8 (fromIntegral (acc .&. 0xFF))
+          let acc' = acc `unsafeShiftR` 8
+          loop (n -1) acc'
+
+encodeVarInt16 :: Int16 -> B.Builder ()
+encodeVarInt16 = loop 2
   where
     loop n acc =
       if n == 0
