@@ -32,7 +32,7 @@ data ConnectInfo = ConnectInfo
 defaultConnectInfo :: ConnectInfo
 defaultConnectInfo = ConnectInfo "127.0.0.1" 9000 "" "default" ""
 
-connect :: ConnectInfo -> (CHConn -> IO CHConn) -> IO CHConn
+connect :: ConnectInfo -> (ServerInfo -> CHConn -> IO CHConn) -> IO CHConn
 connect (ConnectInfo host port database username password) func = do
   addr <- resolveDNS (host, port)
   withResource (initTCPClient defaultTCPClientConfig {tcpRemoteAddr = addrAddress addr}) $ \tcp -> do
@@ -57,5 +57,5 @@ connect (ConnectInfo host port database username password) func = do
           Just timezone -> print . T.validate $ timezone
         print . T.validate $ displayName info
         let conn = CHConn (readBuffer i) (writeBuffer' o) consumed
-        func conn
+        func info conn
         return conn

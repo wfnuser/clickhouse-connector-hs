@@ -4,6 +4,7 @@ module Database.ClickHouse.Protocol.Encoder where
 
 import Control.Monad
 import Data.Bits
+import Data.Int
 import Z.Data.ASCII
 import qualified Z.Data.Builder as B
 import qualified Z.Data.Vector as V
@@ -16,6 +17,17 @@ encodeVarUInt x = do
     else B.word8 (fromIntegral byte)
   let x' = x `unsafeShiftR` 7
   when (x' /= 0) (encodeVarUInt x')
+
+encodeVarInt32 :: Int32 -> B.Builder ()
+encodeVarInt32 = loop 4
+  where
+    loop n acc =
+      if n == 0
+        then return ()
+        else do
+          B.word8 (fromIntegral (acc .&. 0xFF))
+          let acc' = acc `unsafeShiftR` 8
+          loop (n -1) acc'
 
 encodeBinaryStr :: V.Bytes -> B.Builder ()
 encodeBinaryStr str = do
