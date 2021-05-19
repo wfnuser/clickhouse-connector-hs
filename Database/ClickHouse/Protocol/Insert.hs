@@ -21,22 +21,22 @@ import qualified Z.Data.Vector as V
 prepareInsert :: V.Bytes -> V.Bytes -> ServerInfo -> CHConn -> IO CHConn
 prepareInsert tablename q info c = do
   let bytes = B.build $ queryBuilder q tablename
-  print bytes
+--   print bytes
   chWrite c bytes
   buf <- chRead c -- read meta data
-  print buf
+--   print buf
   return c
 
 sendEmptyBlock :: CHConn -> IO CHConn
 sendEmptyBlock c = do
   let bytes = B.build $ emptyBlockBuilder ""
-  print bytes
+--   print bytes
   chWrite c bytes
   return c
 
 sendData :: V.Bytes -> Block -> CHConn -> IO CHConn
 sendData tablename block c = do
   let bytes = B.build $ blockBuilder tablename $ Just block
-  print bytes
+--   print bytes
   chWrite c bytes
   return c

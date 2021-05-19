@@ -47,6 +47,6 @@ queryBuilder q tablename = do
 sendQuery :: V.Bytes -> V.Bytes -> CHConn -> IO CHConn
 sendQuery q tablename c = do
   let bytes = B.build $ queryBuilder q tablename
-  print bytes
+  -- print bytes
   chWrite c bytes
   return c

@@ -43,17 +43,20 @@ connect (ConnectInfo host port database username password) func = do
         print . T.validate $ displayName info
         let conn = CHConn (readBuffer i) (writeBuffer' o) consumed
         -- func info conn
-        prepareInsert "test" "INSERT INTO test (x, y) VALUES " info conn
 
-        let columns_with_type = [("x", "String"), ("y", "Int16")]
-        let block =
-              ColumnOrientedBlock
-                { columns_with_type = V.pack columns_with_type,
-                  blockdata = V.pack [V.pack [CKString "xsadf", CKString "xxx"], V.pack [CKInt16 4, CKInt16 123]]
-                }
-        sendData "test" block conn
-        res <- readBuffer i
+        -- insert part
+        -- prepareInsert "test" "INSERT INTO test (x, y) VALUES " info conn
 
+        -- let columns_with_type = [("x", "String"), ("y", "Int16")]
+        -- let block =
+        --       ColumnOrientedBlock
+        --         { columns_with_type = V.pack columns_with_type,
+        --           blockdata = V.pack [V.pack [CKString "xsadf", CKString "xxx"], V.pack [CKInt16 4, CKInt16 123]]
+        --         }
+        -- sendData "test" block conn
+        -- res <- readBuffer i
+
+        -- select part
         sendQuery "select * from test" "test" conn
         res <- readBuffer i
         print res
