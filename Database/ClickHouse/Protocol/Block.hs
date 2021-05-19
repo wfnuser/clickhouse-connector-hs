@@ -32,6 +32,8 @@ data Block = ColumnOrientedBlock
   }
   deriving (Show)
 
+-- TODO: Provide a method to Consturct Block from rows
+
 emptyBlockBuilder :: V.Bytes -> B.Builder ()
 emptyBlockBuilder tableName = do
   blockBuilder tableName Nothing

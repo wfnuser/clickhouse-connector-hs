@@ -30,30 +30,20 @@ decodeBool = do
     then return True
     else return False
 
--- TODO: define a loop helper function
+loopDecodeNum :: (Num a, Bits a) => Int -> Int -> a -> P.Parser a
+loopDecodeNum bit n ans =
+  if n == bit
+    then return ans
+    else do
+      byte <- P.satisfy $ const True
+      let ans' = ans .|. ((fromIntegral byte .&. 0xFF) `unsafeShiftL` (8 * n))
+      loopDecodeNum bit (n + 1) ans'
+
 decodeVarInt32 :: P.Parser Int32
-decodeVarInt32 = loop 0 0
-  where
-    loop :: Int -> Int32 -> P.Parser Int32
-    loop n ans =
-      if n == 4
-        then return ans
-        else do
-          byte <- P.satisfy $ const True
-          let ans' = ans .|. ((fromIntegral byte .&. 0xFF) `unsafeShiftL` (8 * n))
-          loop (n + 1) ans'
+decodeVarInt32 = loopDecodeNum 4 0 0
 
 decodeVarInt16 :: P.Parser Int16
-decodeVarInt16 = loop 0 0
-  where
-    loop :: Int -> Int16 -> P.Parser Int16
-    loop n ans =
-      if n == 2
-        then return ans
-        else do
-          byte <- P.satisfy $ const True
-          let ans' = ans .|. ((fromIntegral byte .&. 0xFF) `unsafeShiftL` (8 * n))
-          loop (n + 1) ans'
+decodeVarInt16 = loopDecodeNum 2 0 0
 
 decodeBinaryStr :: P.Parser V.Bytes
 decodeBinaryStr = do

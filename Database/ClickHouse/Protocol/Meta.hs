@@ -12,6 +12,7 @@ import qualified Z.Data.Text as T
 import Z.Data.Vector as V
 
 -- data MetaInfo = Block
+-- TODO: metainfo should support more than block
 
 metaParser :: P.Parser (Block, BlockInfo)
 metaParser = do
