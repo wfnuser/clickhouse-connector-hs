@@ -9,6 +9,7 @@ import Database.ClickHouse.Protocol.Block
 import Database.ClickHouse.Protocol.Column
 import Database.ClickHouse.Protocol.Insert
 import Database.ClickHouse.Protocol.Packet
+import Database.ClickHouse.Protocol.Query
 import qualified Z.Data.Builder as B
 import qualified Z.Data.Parser as P
 import qualified Z.Data.Text as T
@@ -45,13 +46,18 @@ connect (ConnectInfo host port database username password) func = do
         prepareInsert "test" "INSERT INTO test (x, y) VALUES " info conn
 
         let columns_with_type = [("x", "String"), ("y", "Int16")]
-        let b =
+        let block =
               ColumnOrientedBlock
                 { columns_with_type = V.pack columns_with_type,
-                  blockdata = V.pack [V.pack [CKString "asdf", CKString "asdf"], V.pack [CKInt16 123, CKInt16 123]]
+                  blockdata = V.pack [V.pack [CKString "xsadf", CKString "xxx"], V.pack [CKInt16 4, CKInt16 123]]
                 }
-        sendData "test" b conn
-        sendEmptyBlock conn
+        sendData "test" block conn
         res <- readBuffer i
-        print . T.validate $ res
+
+        sendQuery "select * from test" "test" conn
+        res <- readBuffer i
+        print res
+        res <- readBuffer i
+        print res
+
         return conn

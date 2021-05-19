@@ -54,7 +54,7 @@ blockBuilder tableName block = do
   where
     loop i (ColumnOrientedBlock cwt bd) = do
       if i == V.length cwt
-        then return ()
+        then blockBuilder "" Nothing
         else do
           let (cn, ct) = V.index cwt i
           let rows = V.index bd i

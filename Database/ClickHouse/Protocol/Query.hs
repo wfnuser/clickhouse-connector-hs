@@ -3,6 +3,7 @@
 module Database.ClickHouse.Protocol.Query where
 
 import Database.ClickHouse.Connection
+import Database.ClickHouse.Protocol.Block
 import qualified Database.ClickHouse.Protocol.ClientProtocol as CP
 import Database.ClickHouse.Protocol.Const
 import Database.ClickHouse.Protocol.Decoder
@@ -14,8 +15,8 @@ import qualified Z.Data.Builder as B
 import qualified Z.Data.Parser as P
 import qualified Z.Data.Vector as V
 
-queryBuilder :: V.Bytes -> B.Builder ()
-queryBuilder q = do
+queryBuilder :: V.Bytes -> V.Bytes -> B.Builder ()
+queryBuilder q tablename = do
   encodeVarUInt CP._QUERY
   encodeBinaryStr "" -- query id
   -- TODO: should get client info from some where
@@ -41,9 +42,11 @@ queryBuilder q = do
   encodeVarUInt 0 -- not compression
   encodeBinaryStr q
 
-sendQuery :: V.Bytes -> CHConn -> IO CHConn
-sendQuery q c = do
-  let bytes = B.build $ queryBuilder q
+  emptyBlockBuilder tablename
+
+sendQuery :: V.Bytes -> V.Bytes -> CHConn -> IO CHConn
+sendQuery q tablename c = do
+  let bytes = B.build $ queryBuilder q tablename
   print bytes
   chWrite c bytes
   return c

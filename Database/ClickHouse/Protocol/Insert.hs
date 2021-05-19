@@ -18,14 +18,9 @@ import qualified Z.Data.Parser as P
 import qualified Z.Data.Text as T
 import qualified Z.Data.Vector as V
 
-prepareInsertBuilder :: V.Bytes -> V.Bytes -> ServerInfo -> B.Builder ()
-prepareInsertBuilder tablename q info = do
-  queryBuilder q
-  emptyBlockBuilder tablename
-
 prepareInsert :: V.Bytes -> V.Bytes -> ServerInfo -> CHConn -> IO CHConn
 prepareInsert tablename q info c = do
-  let bytes = B.build $ prepareInsertBuilder tablename q info
+  let bytes = B.build $ queryBuilder q tablename
   print bytes
   chWrite c bytes
   buf <- chRead c -- read meta data
