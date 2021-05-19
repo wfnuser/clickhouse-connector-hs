@@ -34,6 +34,7 @@ library
     build-depends:      base          >= 4.7 && < 5
                       , Z-Data == 0.8.*
                       , Z-IO   == 0.8.*
+                      , debug
 
 executable clickhouse-connector-hs
     main-is:          Main.hs

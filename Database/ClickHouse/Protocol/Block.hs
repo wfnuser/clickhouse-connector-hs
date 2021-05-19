@@ -17,14 +17,14 @@ import qualified Z.Data.Parser as P
 import qualified Z.Data.Text as T
 import qualified Z.Data.Vector as V
 
-data BlockInfo = Info
+data BlockInfo = BlockInfo
   { is_overflows :: !Bool,
     bucket_num :: {-# UNPACK #-} !Int32
   }
   deriving (Show)
 
 defaultBlockInfo :: BlockInfo
-defaultBlockInfo = Info False 0
+defaultBlockInfo = BlockInfo False 0
 
 data Block = ColumnOrientedBlock
   { columns_with_type :: V.Vector (V.Bytes, V.Bytes),
@@ -64,7 +64,7 @@ blockBuilder tableName block = do
           loop (i + 1) (ColumnOrientedBlock cwt bd)
 
 blockInfoBuilder :: BlockInfo -> B.Builder ()
-blockInfoBuilder (Info is_overflows bucket_num) = do
+blockInfoBuilder (BlockInfo is_overflows bucket_num) = do
   encodeVarUInt 1
   encodeBool is_overflows -- not overflows
   encodeVarUInt 2
@@ -73,3 +73,41 @@ blockInfoBuilder (Info is_overflows bucket_num) = do
     then encodeVarInt32 (-1)
     else encodeVarInt32 bucket_num
   encodeVarUInt 0
+
+blockInfoParser :: P.Parser BlockInfo
+blockInfoParser = do
+  num1 <- decodeVarUInt
+  is_overflows <- decodeBool
+  num2 <- decodeVarUInt
+  bucket_num <- decodeVarInt32
+  num3 <- decodeVarUInt
+  return $ BlockInfo is_overflows bucket_num
+
+blockParser :: P.Parser (Block, BlockInfo)
+blockParser = do
+  tablename <- decodeBinaryStr
+  info <- blockInfoParser
+  cols <- decodeVarUInt
+  rows <- decodeVarUInt
+  block <- loop cols rows (ColumnOrientedBlock V.empty V.empty)
+  return (block, info)
+  where
+    -- blockdata :: V.Vector CKType
+    loopRow :: Word -> V.Bytes -> V.Vector CKType -> P.Parser (V.Vector CKType)
+    loopRow rows colType blockdata
+      | rows == 0 = return blockdata
+      | otherwise = do
+        val <- decodeCK colType
+        let blockdata' = V.cons val blockdata
+        loopRow (rows -1) colType blockdata'
+    -- block :: Block
+    loop :: Word -> Word -> Block -> P.Parser Block
+    loop cols rows block
+      | cols == 0 = return block
+      | otherwise = do
+        colName <- decodeBinaryStr
+        colType <- decodeBinaryStr
+        let block' = block {columns_with_type = V.cons (colName, colType) (columns_with_type block)}
+        blockcol <- loopRow rows colType V.empty
+        let block'' = block' {blockdata = V.cons blockcol $ blockdata block'}
+        loop (cols -1) rows block''

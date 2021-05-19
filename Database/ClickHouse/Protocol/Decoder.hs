@@ -43,10 +43,10 @@ decodeVarInt32 = loop 0 0
           let ans' = ans .|. ((fromIntegral byte .&. 0xFF) `unsafeShiftL` (8 * n))
           loop (n + 1) ans'
 
-decodeVarInt16 :: P.Parser Int32
+decodeVarInt16 :: P.Parser Int16
 decodeVarInt16 = loop 0 0
   where
-    loop :: Int -> Int32 -> P.Parser Int32
+    loop :: Int -> Int16 -> P.Parser Int16
     loop n ans =
       if n == 2
         then return ans

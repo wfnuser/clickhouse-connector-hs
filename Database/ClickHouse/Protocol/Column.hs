@@ -1,10 +1,13 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Database.ClickHouse.Protocol.Column where
 
 import Data.Int
+import Database.ClickHouse.Protocol.Decoder
 import Database.ClickHouse.Protocol.Encoder
 import qualified Z.Data.Builder as B
+import qualified Z.Data.Parser as P
 import qualified Z.Data.Vector as V
 
 data CKType
@@ -26,3 +29,9 @@ encodeCK cks = loop 0 cks
             CKString v -> do
               encodeBinaryStr v
           loop (i + 1) cks
+
+decodeCK :: V.Bytes -> P.Parser CKType
+decodeCK t = do
+  case t of
+    "Int16" -> CKInt16 <$> decodeVarInt16
+    "String" -> CKString <$> decodeBinaryStr

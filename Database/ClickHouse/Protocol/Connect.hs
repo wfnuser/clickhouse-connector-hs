@@ -8,6 +8,7 @@ import Database.ClickHouse.DNS
 import Database.ClickHouse.Protocol.Block
 import Database.ClickHouse.Protocol.Column
 import Database.ClickHouse.Protocol.Insert
+import Database.ClickHouse.Protocol.Meta
 import Database.ClickHouse.Protocol.Packet
 import Database.ClickHouse.Protocol.Query
 import qualified Z.Data.Builder as B
@@ -58,9 +59,11 @@ connect (ConnectInfo host port database username password) func = do
 
         -- select part
         sendQuery "select * from test" "test" conn
-        res <- readBuffer i
-        print res
-        res <- readBuffer i
-        print res
+        readMeta conn
+        readMeta conn
+        -- res <- readBuffer i
+        -- print res
+        -- res <- readBuffer i
+        -- print res
 
         return conn
