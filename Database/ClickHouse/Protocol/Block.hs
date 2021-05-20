@@ -85,13 +85,14 @@ blockInfoParser = do
   num3 <- decodeVarUInt
   return $ BlockInfo is_overflows bucket_num
 
-blockParser :: P.Parser Block
+blockParser :: P.Parser (Block, BlockInfo)
 blockParser = do
   tablename <- decodeBinaryStr
   info <- blockInfoParser
   cols <- decodeVarUInt
   rows <- decodeVarUInt
-  loop cols rows (ColumnOrientedBlock V.empty V.empty)
+  block <- loop cols rows (ColumnOrientedBlock V.empty V.empty)
+  return (block, info)
   where
     -- blockdata :: V.Vector CKType
     loopRow :: Word -> V.Bytes -> V.Vector CKType -> P.Parser (V.Vector CKType)

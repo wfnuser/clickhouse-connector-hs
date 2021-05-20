@@ -47,7 +47,6 @@ connect (ConnectInfo host port database username password) func = do
 
         -- insert part
         -- prepareInsert "test" "INSERT INTO test (x, y) VALUES " info conn
-
         -- let columns_with_type = [("x", "String"), ("y", "Int16")]
         -- let block =
         --       ColumnOrientedBlock
@@ -59,8 +58,26 @@ connect (ConnectInfo host port database username password) func = do
 
         -- select part
         sendQuery "select * from test" "test" conn
-        readMeta conn
-        readMeta conn
+
+        meta <- readMeta conn
+        case meta of
+          Left error -> print error
+          Right (MetaData (block, info)) -> do
+            print $ "cols: " ++ show (V.length $ blockdata block)
+            print $ "rows: " ++ show (V.length (V.index (blockdata block) 0))
+
+        meta <- readMeta conn
+        case meta of
+          Left error -> print error
+          Right (MetaData (block, info)) -> do
+            print block
+            print info
+          -- print $ "cols: " ++ show (V.length $ blockdata block)
+          -- print $ "rows: " ++ show (V.length (V.index (blockdata block) 0))
+          Right (MetaProfileInfo pi) -> do
+            print pi
+          _ -> print "unknown"
+
         -- res <- readBuffer i
         -- print res
         -- res <- readBuffer i

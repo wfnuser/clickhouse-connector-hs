@@ -7,8 +7,10 @@ import Database.ClickHouse.Connection
 import Database.ClickHouse.Protocol.Block
 import Database.ClickHouse.Protocol.Column
 import Database.ClickHouse.Protocol.Decoder
-import Database.ClickHouse.Protocol.Progress
+import qualified Database.ClickHouse.Protocol.ProfileInfo as PI
+import qualified Database.ClickHouse.Protocol.Progress as PG
 import qualified Database.ClickHouse.Protocol.ServerProtocol as SP
+import Debug.Trace
 import qualified Z.Data.Parser as P
 import qualified Z.Data.Text as T
 import Z.Data.Vector as V
@@ -16,7 +18,7 @@ import Z.Data.Vector as V
 -- data MetaInfo = Block
 -- TODO: metainfo should support more than block
 
-data MetaInfo = MetaData Block | MetaException V.Bytes | MetaProgress Progress
+data MetaInfo = MetaData (Block, BlockInfo) | MetaException V.Bytes | MetaProgress PG.Progress | MetaProfileInfo PI.ProfileInfo
 
 metaParser :: P.Parser MetaInfo
 metaParser = do
@@ -26,19 +28,23 @@ metaParser = do
       | packetType == SP._DATA -> MetaData <$> blockParser
       -- TODO: support the internal error
       | packetType == SP._EXCEPTION -> return $ MetaException "internal error"
-      | packetType == SP._PROGRESS -> MetaProgress <$> progressParser
+      | packetType == SP._PROGRESS -> MetaProgress <$> PG.progressParser
+      | packetType == SP._PROFILE_INFO -> MetaProfileInfo <$> PI.profileInfoParser
+      | otherwise -> return $ MetaException "unknown types"
 
 readMeta :: CHConn -> IO (Either P.ParseError MetaInfo)
 readMeta c = loopReadMeta
   where
     loopReadMeta = do
       buf <- chRead c
+      trace (show buf) return ()
       let (remain, meta) = P.parse metaParser buf
       case meta of
         Right (MetaProgress progress) -> do
-          print $ "current rows: " ++ show (rows progress)
-          print $ "current bytes: " ++ show (bytes progress)
-          print $ "total rows: " ++ show (totalRows progress)
+          print $ "current rows: " ++ show (PG.rows progress)
+          print $ "current bytes: " ++ show (PG.bytes progress)
+          print $ "total rows: " ++ show (PG.totalRows progress)
+          -- If progress info is received; read the network again.
           loopReadMeta
         _ -> return meta
 
