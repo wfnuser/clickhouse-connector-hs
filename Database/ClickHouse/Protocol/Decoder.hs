@@ -39,6 +39,9 @@ loopDecodeNum bit n ans =
       let ans' = ans .|. ((fromIntegral byte .&. 0xFF) `unsafeShiftL` (8 * n))
       loopDecodeNum bit (n + 1) ans'
 
+decodeVarInt64 :: P.Parser Int64
+decodeVarInt64 = loopDecodeNum 8 0 0
+
 decodeVarInt32 :: P.Parser Int32
 decodeVarInt32 = loopDecodeNum 4 0 0
 
