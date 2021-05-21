@@ -21,5 +21,4 @@ profileInfoParser = do
   bytes <- decodeVarUInt
   appliedLimit <- decodeBool
   rowsBeforeLimit <- decodeVarUInt
-  calculatedRowsBeforeLimit <- decodeBool
   ProfileInfo rows blocks bytes appliedLimit rowsBeforeLimit <$> decodeBool

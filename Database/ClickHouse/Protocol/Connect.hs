@@ -18,8 +18,8 @@ import qualified Z.Data.Vector as V
 import Z.IO
 import Z.IO.Network
 
-connect :: ConnectInfo -> (ServerInfo -> CHConn -> IO CHConn) -> IO CHConn
-connect (ConnectInfo host port database username password) func = do
+withConnect :: ConnectInfo -> (ServerInfo -> CHConn -> IO ()) -> IO ()
+withConnect (ConnectInfo host port database username password) func = do
   addr <- resolveDNS (host, port)
   withResource (initTCPClient defaultTCPClientConfig {tcpRemoteAddr = addrAddress addr}) $ \tcp -> do
     (i, o) <- newBufferedIO tcp
@@ -43,44 +43,4 @@ connect (ConnectInfo host port database username password) func = do
           Just timezone -> print . T.validate $ timezone
         print . T.validate $ displayName info
         let conn = CHConn (readBuffer i) (writeBuffer' o) consumed
-        -- func info conn
-
-        -- insert part
-        -- prepareInsert "test" "INSERT INTO test (x, y) VALUES " info conn
-        -- let columns_with_type = [("x", "String"), ("y", "Int16")]
-        -- let block =
-        --       ColumnOrientedBlock
-        --         { columns_with_type = V.pack columns_with_type,
-        --           blockdata = V.pack [V.pack [CKString "xsadf", CKString "xxx"], V.pack [CKInt16 4, CKInt16 123]]
-        --         }
-        -- sendData "test" block conn
-        -- res <- readBuffer i
-
-        -- select part
-        sendQuery "select * from test" "test" conn
-
-        meta <- readMeta conn
-        case meta of
-          Left error -> print error
-          Right (MetaData (block, info)) -> do
-            print $ "cols: " ++ show (V.length $ blockdata block)
-            print $ "rows: " ++ show (V.length (V.index (blockdata block) 0))
-
-        meta <- readMeta conn
-        case meta of
-          Left error -> print error
-          Right (MetaData (block, info)) -> do
-            print block
-            print info
-          -- print $ "cols: " ++ show (V.length $ blockdata block)
-          -- print $ "rows: " ++ show (V.length (V.index (blockdata block) 0))
-          Right (MetaProfileInfo pi) -> do
-            print pi
-          _ -> print "unknown"
-
-        -- res <- readBuffer i
-        -- print res
-        -- res <- readBuffer i
-        -- print res
-
-        return conn
+        func info conn

@@ -5,13 +5,18 @@ import Database.ClickHouse.Protocol.Decoder
 import qualified Z.Data.Parser as P
 
 data Progress = Progress
-  { rows :: Int64,
-    bytes :: Int64,
-    totalRows :: Int64
+  { rows :: Word,
+    bytes :: Word,
+    totalRows :: Word,
+    writtenRows :: Word,
+    writtenBytes :: Word
   }
+  deriving (Show)
 
 progressParser :: P.Parser Progress
 progressParser = do
-  rows <- decodeVarInt64
-  bytes <- decodeVarInt64
-  Progress rows bytes <$> decodeVarInt64
+  rows <- decodeVarUInt
+  bytes <- decodeVarUInt
+  totalRows <- decodeVarUInt
+  writtenRows <- decodeVarUInt
+  Progress rows bytes totalRows writtenRows <$> decodeVarUInt

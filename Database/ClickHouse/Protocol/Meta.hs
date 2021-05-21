@@ -18,7 +18,8 @@ import Z.Data.Vector as V
 -- data MetaInfo = Block
 -- TODO: metainfo should support more than block
 
-data MetaInfo = MetaData (Block, BlockInfo) | MetaException V.Bytes | MetaProgress PG.Progress | MetaProfileInfo PI.ProfileInfo
+data MetaInfo = MetaData (Block, BlockInfo) | MetaException V.Bytes | MetaProgress PG.Progress | MetaProfileInfo PI.ProfileInfo | MetaEndOfStream
+  deriving (Show)
 
 metaParser :: P.Parser MetaInfo
 metaParser = do
@@ -30,34 +31,54 @@ metaParser = do
       | packetType == SP._EXCEPTION -> return $ MetaException "internal error"
       | packetType == SP._PROGRESS -> MetaProgress <$> PG.progressParser
       | packetType == SP._PROFILE_INFO -> MetaProfileInfo <$> PI.profileInfoParser
+      | packetType == SP._END_OF_STREAM -> return MetaEndOfStream
       | otherwise -> return $ MetaException "unknown types"
 
 readMeta :: CHConn -> IO (Either P.ParseError MetaInfo)
-readMeta c = loopReadMeta
+readMeta c = do
+  metas <- genMetas "" []
+  let blocks = Prelude.filter isBlock metas
+  return $ Right $ mergeBlocks blocks
   where
-    loopReadMeta = do
-      buf <- chRead c
-      trace (show buf) return ()
-      let (remain, meta) = P.parse metaParser buf
-      case meta of
-        Right (MetaProgress progress) -> do
-          print $ "current rows: " ++ show (PG.rows progress)
-          print $ "current bytes: " ++ show (PG.bytes progress)
-          print $ "total rows: " ++ show (PG.totalRows progress)
-          -- If progress info is received; read the network again.
-          loopReadMeta
-        _ -> return meta
+    mergeBlocks :: [MetaInfo] -> MetaInfo
+    mergeBlocks (x : xs) = do
+      let (MetaData (block, info)) = x
+      let bd = blockdata block
+      if V.length bd == 0
+        then mergeBlocks xs
+        else do
+          let (MetaData (nextblock, nextinfo)) = mergeBlocks xs
+          let nextbd = blockdata nextblock
+          let combinedBlockData = if V.length nextbd == 0 then bd else V.zipWith' V.append bd nextbd
 
--- case res of
---   (remain, Left err) -> do
---     print err
---   (remain, Right (block, info)) -> do
---     print $ is_overflows info
---     print $ bucket_num info
---     print $ V.length (columns_with_type block)
---     mapM_
---       (\(cn, ct) -> do print $ T.validate cn; print $ T.validate ct)
---       (V.unpack $ columns_with_type block)
---     mapM_
---       (mapM_ print)
---       (V.unpack $ blockdata block)
+          let combinedBlock =
+                ColumnOrientedBlock
+                  { blockdata = combinedBlockData,
+                    columns_with_type = if columns_with_type block == V.empty then columns_with_type nextblock else columns_with_type block
+                  }
+          MetaData (combinedBlock, info)
+    mergeBlocks [] = MetaData (ColumnOrientedBlock V.empty V.empty, defaultBlockInfo)
+
+    isBlock :: MetaInfo -> Bool
+    isBlock metaInfo = case metaInfo of
+      MetaData m -> True
+      _ -> False
+
+    genMetas :: Bytes -> [MetaInfo] -> IO [MetaInfo]
+    genMetas buf acc = do
+      if buf == ""
+        then do
+          buf <- chRead c
+          genMetas buf acc
+        else do
+          let (remain, meta) = P.parse metaParser buf
+          case meta of
+            Left error -> return []
+            Right MetaEndOfStream -> return acc
+            Right (MetaProgress progress) -> do
+              print "show progress..."
+              print $ "current rows: " ++ show (PG.rows progress)
+              print $ "current bytes: " ++ show (PG.bytes progress)
+              print $ "total rows: " ++ show (PG.totalRows progress)
+              genMetas remain acc
+            Right meta -> genMetas remain (meta : acc)
