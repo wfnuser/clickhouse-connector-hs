@@ -5,36 +5,74 @@ module Main where
 
 import Database.ClickHouse.Connection
 import Database.ClickHouse.Protocol.Block
+import Database.ClickHouse.Protocol.CKTypes
 import Database.ClickHouse.Protocol.Column
 import Database.ClickHouse.Protocol.Connect (withConnect)
 import Database.ClickHouse.Protocol.Insert
 import Database.ClickHouse.Protocol.Meta
 import Database.ClickHouse.Protocol.Query
+import qualified Z.Data.Text as T
 import qualified Z.Data.Vector as V
 
 main :: IO ()
 main = withConnect defaultConnectInfo \info conn ->
   do
     -- insert part
-    prepareInsert "test" "INSERT INTO test (x, y) VALUES " info conn
-    let columns_with_type = [("x", "String"), ("y", "Int16")]
+    prepareInsert "arr" "INSERT INTO arr2 (x) VALUES " info conn
+    let columns_with_type = [("x", "Array(Array(String))")]
     let block =
           ColumnOrientedBlock
             { columns_with_type = V.pack columns_with_type,
-              blockdata = V.pack [V.pack [CKString "xsadf", CKString "xxx", CKString "test"], V.pack [CKInt16 4, CKInt16 123, CKInt16 777]]
+              -- blockdata = V.pack [V.pack [CKArray (V.pack [CKString "tmp"])]]
+              blockdata =
+                V.pack
+                  [ V.pack -- each item for one row
+                      [ CKArray
+                          ( V.pack
+                              [ CKArray
+                                  ( V.pack
+                                      [ CKString "silvia",
+                                        CKString "wfnuser"
+                                      ]
+                                  ),
+                                CKArray
+                                  ( V.pack
+                                      [ CKString "test1",
+                                        CKString "test11",
+                                        CKString "test111"
+                                      ]
+                                  )
+                              ]
+                          ),
+                        CKArray
+                          ( V.pack
+                              [ CKArray
+                                  ( V.pack
+                                      [ CKString "batchtest"
+                                      ]
+                                  )
+                              ]
+                          )
+                      ]
+                  ]
             }
-    sendData "test" block conn
-    meta <- readMeta conn
+    sendData "arr" block conn
+    buf <- chRead conn
+    print buf
+    -- meta <- readMeta conn
+    -- meta <- readMeta conn
 
-    -- select part
-    sendQuery "select * from test limit 3" "test" conn
+    return ()
 
-    meta <- readMeta conn
-    case meta of
-      Left error -> print error
-      Right (MetaData (block, info)) -> do
-        let cols = V.length $ blockdata block
-        if cols == 0
-          then print "empty"
-          else do
-            print $ show block
+-- select part
+-- sendQuery "select * from test limit 3" "test" conn
+
+-- meta <- readMeta conn
+-- case meta of
+--   Left error -> print error
+--   Right (MetaData (block, info)) -> do
+--     let cols = V.length $ blockdata block
+--     if cols == 0
+--       then print "empty"
+--       else do
+--         print $ show block

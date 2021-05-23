@@ -37,6 +37,6 @@ sendEmptyBlock c = do
 sendData :: V.Bytes -> Block -> CHConn -> IO CHConn
 sendData tablename block c = do
   let bytes = B.build $ blockBuilder tablename $ Just block
---   print bytes
+  print  (show bytes)
   chWrite c bytes
   return c

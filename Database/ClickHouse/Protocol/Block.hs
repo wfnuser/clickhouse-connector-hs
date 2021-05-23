@@ -17,6 +17,7 @@ import qualified Z.Data.Builder as B
 import qualified Z.Data.Parser as P
 import qualified Z.Data.Text as T
 import qualified Z.Data.Vector as V
+import Database.ClickHouse.Protocol.CKTypes
 
 data BlockInfo = BlockInfo
   { is_overflows :: !Bool,
@@ -60,10 +61,14 @@ blockBuilder tableName block = do
         then blockBuilder "" Nothing
         else do
           let (cn, ct) = V.index cwt i
-          let rows = V.index bd i
+          let rows = V.index bd i -- Vector of a particularly Column
+          -- trace (show . T.validate $ cn) (return ())
+          -- trace (show . T.validate $ ct) (return ())
           encodeBinaryStr cn
           encodeBinaryStr ct
-          encodeCK rows
+          encodeCKs rows
+          let bytes = B.build $ encodeCKs rows
+          trace ("rows: " ++ show bytes) (return ())
           loop (i + 1) (ColumnOrientedBlock cwt bd)
 
 blockInfoBuilder :: BlockInfo -> B.Builder ()
