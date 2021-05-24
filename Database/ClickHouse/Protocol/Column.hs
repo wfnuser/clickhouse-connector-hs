@@ -7,26 +7,29 @@ import Data.Int
 import Database.ClickHouse.Protocol.CKTypes
 import Database.ClickHouse.Protocol.Decoder
 import Database.ClickHouse.Protocol.Encoder
+import Debug.Trace
 import qualified Z.Data.Builder as B
 import qualified Z.Data.Parser as P
 import qualified Z.Data.Vector as V
-import Debug.Trace
 
 -- encode Rows of CKType
 encodeCKs :: V.Vector CKType -> B.Builder ()
-encodeCKs cks = case V.head cks of
-  CKArray arr -> do
-    encodeArray cks
-  _ -> do
-    loop 0 (trace ("encodeCKs rows: " ++ show cks) cks)
-    where
-      loop i cks = do
-        if i == V.length cks
-          then return ()
-          else do
-            let ck = V.index cks i
-            encodeCK ck
-            loop (i + 1) cks
+encodeCKs cks =
+  if V.length cks == 0
+    then return ()
+    else case V.head cks of
+      CKArray arr -> do
+        encodeArray cks
+      _ -> do
+        loop 0 (trace ("encodeCKs rows: " ++ show cks) cks)
+        where
+          loop i cks = do
+            if i == V.length cks
+              then return ()
+              else do
+                let ck = V.index cks i
+                encodeCK ck
+                loop (i + 1) cks
 
 encodeCK :: CKType -> B.Builder ()
 encodeCK ck = case ck of
@@ -34,8 +37,9 @@ encodeCK ck = case ck of
     encodeVarInt16 v
   CKString v -> do
     encodeBinaryStr v
-  -- CKArray v -> do
-  --   encodeArray v
+
+-- CKArray v -> do
+--   encodeArray v
 
 decodeCK :: V.Bytes -> P.Parser CKType
 decodeCK t = do
@@ -57,7 +61,8 @@ encodeArray v = do
   -- trace (show lengths) (return ())
   mapM_ encodeVarInt64 (drop 1 lengths)
   mapM_ encodeCK flattern
-  -- return ()
+
+-- return ()
 
 -- (lengths, flattern typs)
 computeArrayLen :: V.Vector CKType -> ([] Int64, V.Vector CKType)

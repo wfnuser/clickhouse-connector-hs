@@ -27,33 +27,7 @@ main = withConnect defaultConnectInfo \info conn ->
               blockdata =
                 V.pack
                   [ V.pack -- each item for one row
-                      [ CKArray
-                          ( V.pack
-                              [ CKArray
-                                  ( V.pack
-                                      [ CKString "silvia",
-                                        CKString "wfnuser"
-                                      ]
-                                  ),
-                                CKArray
-                                  ( V.pack
-                                      [ CKString "test1",
-                                        CKString "test11",
-                                        CKString "test111"
-                                      ]
-                                  )
-                              ]
-                          ),
-                        CKArray
-                          ( V.pack
-                              [ CKArray
-                                  ( V.pack
-                                      [ CKString "batchtest"
-                                      ]
-                                  )
-                              ]
-                          )
-                      ]
+                      []
                   ]
             }
     sendData "arr" block conn
