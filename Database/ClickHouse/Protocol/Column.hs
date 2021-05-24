@@ -38,20 +38,16 @@ encodeCK ck = case ck of
   CKString v -> do
     encodeBinaryStr v
 
--- CKArray v -> do
---   encodeArray v
-
 decodeCK :: V.Bytes -> P.Parser CKType
 decodeCK t = do
   case t of
     "Int16" -> CKInt16 <$> decodeVarInt16
     "String" -> CKString <$> decodeBinaryStr
 
--- encodeCKs :: CKType ->
-
 -- [[[1,2],[3]],[[5],[6,7,8]]]
--- [2] [1, 2] [2,3,4,7]
-
+-- [[1,2],[3]], [[5], [6,7,8]]
+-- [1,2],[3],[5],[6,7,8]
+-- [2] [2, 4] [2,3,4,7]
 -- Encode An Array
 encodeArray :: V.Vector CKType -> B.Builder ()
 encodeArray v = do
@@ -64,7 +60,7 @@ encodeArray v = do
 
 -- return ()
 
--- (lengths, flattern typs)
+-- (lengths, flattern types)
 computeArrayLen :: V.Vector CKType -> ([] Int64, V.Vector CKType)
 computeArrayLen v = (fromIntegral (V.length v) : arrayLens, flattern)
   where

@@ -69,6 +69,7 @@ readMeta c = do
       if buf == ""
         then do
           buf <- chRead c
+          print buf
           genMetas buf acc
         else do
           let (remain, meta) = P.parse metaParser buf
