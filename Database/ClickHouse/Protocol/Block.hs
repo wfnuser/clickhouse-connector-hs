@@ -69,7 +69,6 @@ blockBuilder tableName block = do
           encodeBinaryStr ct
           encodeCKs rows
           let bytes = B.build $ encodeCKs rows
-          trace ("rows: " ++ show bytes) (return ())
           loop (i + 1) (ColumnOrientedBlock cwt bd)
 
 blockInfoBuilder :: BlockInfo -> B.Builder ()
@@ -95,11 +94,9 @@ blockInfoParser = do
 blockParser :: P.Parser (Block, BlockInfo)
 blockParser = do
   tablename <- decodeBinaryStr
-  -- trace ("trace tablename: " ++ (show . T.validate $ tablename)) return ()
   info <- blockInfoParser
   cols <- decodeVarUInt
   rows <- decodeVarUInt
-  -- trace ("trace rows: " ++ show rows) return ()
   block <- loop cols rows (ColumnOrientedBlock V.empty V.empty)
   return (block, info)
   where
@@ -126,17 +123,15 @@ blockParser = do
         loop (cols -1) rows block''
     parseArray :: Word -> V.Bytes -> P.Parser (V.Vector CKType)
     parseArray lens colType = do
-      -- fmap (V.replicate (fromIntegral lens)) (parse level)
       indexes <- parseArrayLens level (fromIntegral lens) []
       let cnt = last $ head indexes
       items <- replicateM (fromIntegral cnt) (decodeCK baseType)
-      parseResult (drop 1 indexes) (V.pack items) 
+      parseResult indexes (V.pack items) 
       where
         (level, baseType) = getArrayLevel colType
         parseArrayLens :: Int -> Int64 -> [[Int64]] -> P.Parser [[Int64]]
         parseArrayLens level cnt res
           | level == 0 = do
-            -- trace (show res) return ()
             return res
           | otherwise = do
             lens <- replicateM (fromIntegral cnt) decodeVarInt64
@@ -149,10 +144,9 @@ blockParser = do
             then return res
             else do
               let levelIndex = head indexes
-              let levelIndex' = 0 : drop 1 levelIndex
+              let levelIndex' = 0 : init levelIndex
               let levelIndex'' = zipWith (-) levelIndex levelIndex'
-              -- foldl b -> a -> b [] levelIndex'
-              let levelRes = combine levelIndex' res V.empty
+              let levelRes = combine levelIndex'' res V.empty
               parseResult (drop 1 indexes) levelRes
             
         combine :: [Int64] -> V.Vector CKType -> V.Vector CKType -> V.Vector CKType
@@ -166,22 +160,6 @@ blockParser = do
                 let res' = V.append res $ V.pack [CKArray (V.take (fromIntegral end) cks)]
                 let cks' = V.drop (fromIntegral end) cks
                 loop (tail levelIndex) cks' res'
-        -- parse :: P.Parser (V.Vector CKType) -> (V.Vector Int64) -> P.Parser (V.Vector CKType)
-
-        parse :: Int -> P.Parser CKType
-        parse level = do
-          trace ("level is: " ++ show level) (return ())
-          if level == 0
-            then do
-              -- fmap CKString decodeBinaryStr
-              str <- decodeBinaryStr
-              trace ("decoded: " ++ show str) (return (CKString str))
-            else -- return (CKString str)
-            do
-              len <- decodeVarInt64
-              trace ("show length: " ++ show len) (return ())
-              fmap (CKArray . V.replicate (fromIntegral len)) (parse (level -1))
-
     isArray :: V.Bytes -> Bool
     isArray colType
       | V.length colType < 5 = False
